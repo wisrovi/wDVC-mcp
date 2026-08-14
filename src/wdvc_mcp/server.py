@@ -237,23 +237,31 @@ DEFAULT_WORKER_CONFIG = WorkerCommandConfig()
 def get_wdvc_worker_command(config: WorkerCommandConfig | None = None) -> str:
     """Generate the exact Docker command to run the wDVC worker for data download/processing.
 
-    This is THE command agents should use to start the worker that pulls data via DVC.
-    The worker connects to Redis, consumes tasks from the queue, and executes DVC pipeline.
+    CRITICAL: THIS IS THE COMMAND TO DOWNLOAD/PROCESS DATA WITH DVC
+
+    Run this EXACT command to start the worker that:
+    1. Connects to Redis queue
+    2. Pulls tasks from the queue
+    3. Executes: dvc add → dvc push → git rm → dvc inventory
+    4. Downloads data from S3 remote to local projects/ volume
 
     Args:
         config: WorkerCommandConfig with IP, Redis host, projects path, image, and resource limits.
 
     Returns:
-        Complete docker run command as a string.
+        Complete docker run command as a string - COPY AND RUN THIS EXACTLY.
     """
     if config is None:
         config = DEFAULT_WORKER_CONFIG
     # Ensure projects directory exists
     cmd = [
+        "# ============================================================",
+        "# wDVC DATA DOWNLOAD WORKER - RUN THIS TO DOWNLOAD DATA",
+        "# ============================================================",
         f"mkdir -p {config.projects_path}",
         "",
         "docker run -it --rm \\",
-        "  --name worker \\",
+        "  --name wdvc-worker \\",
         "  --hostname wDVC \\",
         f"  --shm-size={config.shm_size} \\",
         f"  --cpus=\"{config.cpus}\" \\",
@@ -264,6 +272,11 @@ def get_wdvc_worker_command(config: WorkerCommandConfig | None = None) -> str:
         "  -w /app \\",
         f"  {config.image} \\",
         "  zsh",
+        "",
+        "# INSIDE CONTAINER - Run the Python worker:",
+        "python worker.py",
+        "",
+        "# This starts the worker that processes DVC queue tasks automatically",
     ]
     return "\n".join(cmd)
 
@@ -308,7 +321,153 @@ def search_wdvc_patterns(query: str) -> str:
     return json.dumps(results, indent=2)
 
 
-# --- CLI Entry Point ---
+@mcp.tool()
+def get_wdvc_agent_installation() -> str:
+    """Get installation instructions for wDVC MCP in all AI agents.
+
+    Returns:
+        Complete installation guide for: opencode, antigravity-cli, Gemini, Feedbuff,
+        Cursor, VS Code, Continue, Zed, and any MCP-compatible agent.
+    """
+    return """
+# wDVC MCP - Agent Installation Guide
+
+## Quick Install (One-liner)
+```bash
+pip install wdvc-mcp
+```
+
+## Agent-Specific Installation
+
+### 1. OpenCode
+Add to `~/.config/opencode/opencode.json`:
+```json
+{
+  "mcp": {
+    "servers": {
+      "wdvc": {
+        "command": "wdvc-mcp",
+        "args": [],
+        "env": {}
+      }
+    }
+  }
+}
+```
+Or via CLI: `opencode mcp add wdvc --command wdvc-mcp`
+
+### 2. Antigravity CLI
+Add to `~/.config/antigravity/config.yaml`:
+```yaml
+mcp_servers:
+  wdvc:
+    command: "wdvc-mcp"
+    args: []
+```
+Or: `antigravity mcp add wdvc --command wdvc-mcp`
+
+### 3. Google Gemini (via MCP)
+Add to Gemini settings or use the MCP extension:
+```json
+{
+  "mcpServers": {
+    "wdvc": {
+      "command": "wdvc-mcp",
+      "args": []
+    }
+  }
+}
+```
+
+### 4. Feedbuff
+In Feedbuff settings → MCP Servers → Add:
+- Name: `wdvc`
+- Command: `wdvc-mcp`
+- Transport: `stdio`
+
+### 5. Cursor
+Add to `~/.cursor/mcp.json`:
+```json
+{
+  "mcpServers": {
+    "wdvc": {
+      "command": "wdvc-mcp"
+    }
+  }
+}
+```
+
+### 6. VS Code (with Continue or MCP extension)
+Add to `.vscode/mcp.json`:
+```json
+{
+  "servers": {
+    "wdvc": {
+      "command": "wdvc-mcp",
+      "args": []
+    }
+  }
+}
+```
+
+### 7. Zed Editor
+Add to `~/.config/zed/settings.json`:
+```json
+{
+  "mcp": {
+    "servers": {
+      "wdvc": {
+        "command": "wdvc-mcp",
+        "args": []
+      }
+    }
+  }
+}
+```
+
+### 8. Continue.dev
+Add to `~/.continue/config.json`:
+```json
+{
+  "mcpServers": [
+    {
+      "name": "wdvc",
+      "command": "wdvc-mcp"
+    }
+  ]
+}
+```
+
+### 9. Generic MCP Client (any stdio-compatible)
+```bash
+# Direct execution
+wdvc-mcp
+
+# Or with SSE transport (for HTTP clients)
+wdvc-mcp --transport sse --port 8000
+```
+
+## Required Environment Variables
+Set these in your shell or agent config:
+```bash
+export REDIS_HOST="192.168.10.108"  # Your Redis host
+export IP_HOST="192.168.1.84"       # Your machine's IP
+```
+
+## Usage After Installation
+Once installed, ask your agent:
+- "Show me the wDVC docker worker command to download data"
+- "Search wDVC patterns for docker worker"
+- "Get the wDVC architect blueprints"
+- "Generate a wDVC project scaffold"
+
+The agent will use these tools:
+- `get_wdvc_worker_command()` - Returns the EXACT docker run command
+- `get_wdvc_architect_blueprints()` - Complete reference for all wDVC patterns
+- `get_wdvc_api_usage()` - Gradio web UI usage
+- `search_wdvc_patterns(query)` - Search the pattern catalog
+- `get_wdvc_agent_installation()` - This guide
+"""
 
 
 def main() -> None:

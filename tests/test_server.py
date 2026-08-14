@@ -33,7 +33,7 @@ def test_get_wdvc_worker_command_defaults():
     result = get_wdvc_worker_command()
     assert "mkdir -p ./projects" in result
     assert "docker run -it --rm" in result
-    assert "--name worker" in result
+    assert "--name wdvc-worker" in result
     assert "--hostname wDVC" in result
     assert "--shm-size=16g" in result
     assert "--cpus=\"4.0\"" in result
@@ -44,6 +44,8 @@ def test_get_wdvc_worker_command_defaults():
     assert "-w /app" in result
     assert "wisrovi/dataset-ia:worker-v1" in result
     assert "zsh" in result
+    assert "DATA DOWNLOAD WORKER" in result
+    assert "python worker.py" in result
 
 
 def test_get_wdvc_worker_command_custom():

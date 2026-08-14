@@ -1,6 +1,6 @@
 [project]
 name = "wdvc-mcp"
-version = "0.1.0"
+version = "0.1.1"
 description = "MCP Server for wDVC - DVC Data Pipeline Management with Docker Worker"
 readme = "README.md"
 requires-python = ">=3.10"
